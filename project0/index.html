@@ -1,1 +1,87 @@
+<!doctype html>
+<html lang="en">
+  
+  <body>
+    <header>
+      <div class="container nav">
+        <div class="brand">Project 0 <small>— Becoming Friends with Your Camera</small></div>
+        <nav style="display:flex; gap:8px; flex-wrap: wrap;">
+          <a href="#overview">Overview</a>
+          <a href="#part1">Part 1</a>
+          <a href="#part2">Part 2</a>
+          <a href="#part3">Dolly Zoom</a>
+          <a href="#deliverables">Deliverables</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <div class="card">
+          <h1>CS180/280A Project 0</h1>
+          <p class="caption">Saaketh Kanduri, Fall 2025</p>
+          <p class="callout" style="margin-top:10px;">This project explores the relationship between perspective, focal length, zoom, and camera position through three shoots and a dolly zoom effect.</p>
+        </div>
+      </section>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <div class="card">
+          <p>Below, I present photographs demonstrating how camera distance and zoom affect perspective. I also created a short animated GIF that reproduces the dolly zoom. Each section includes my photos and reflections.</p>
+        </div>
+      </section>
+
+      <section id="part1">
+        <h2>Part 1: Wrong way vs. Right way</h2>
+        <div class="card">
+          <p><span class="pill">Setup</span> I started by taking a close up picture. Then I stepped back several feet and zoomed in and then framed to a similar face size. The second image should show more natural facial proportions.</p>
+          <div class="grid two" style="margin-top:12px;">
+            <figure>
+              <img src="assets/part1-close.jpg" alt="Close-up selfie with wide-angle distortion" />
+              <figcaption>Close-up: Nose appears larger and the background expands.</figcaption>
+            </figure>
+            <figure>
+              <img src="assets/part1-zoomed.jpg" alt="Zoomed portrait from farther away" />
+              <figcaption>Farther + zoomed: Proportions look more natural and the background is compressed.</figcaption>
+            </figure>
+          </div>
+          <h3>Observations</h3>
+          <p>Moving back and zooming in changes perspective lines and relative proportions even when the face occupies similar pixels. The longer focal length reduces exaggeration of near features compared to far features .</p>
+        </div>
+      </section>
+
+      <section id="part2">
+        <h2>Part 2: Architectural Perspective Compression</h2>
+        <div class="card">
+          <p><span class="pill">Setup</span> I first zoomed in from far away down a long driveway in front of a house. Then I walked forward and shot again without zoom so that the scene filled a similar portion of the frame. The telephoto image should feel flatter; the wide image accentuates depth.</p>
+          <div class="grid two" style="margin-top:12px;">
+            <figure>
+              <img src="assets/part2-tele.jpg" alt="Telephoto view of a long street" />
+              <figcaption>Photo from far: Distances feel compressed and the lines appear more parallel.</figcaption>
+            </figure>
+            <figure>
+              <img src="assets/part2-wide.jpg" alt="Wide-angle view from closer to the same scene" />
+              <figcaption>Zoomed from near: Stronger convergence of lines with foreground enlarged.</figcaption>
+            </figure>
+          </div>
+          <h3>Observations</h3>
+          <p>The compression is a perspective effect from camera position.</p>
+        </div>
+      </section>
+
+      <section id="part3">
+        <h2>Part 3: Dolly Zoom</h2>
+        <div class="card">
+          <p><span class="pill">Setup</span> I captured a couple still images while moving the camera backward and zooming in so the subject stayed a similar size. I then combined them into an animated GIF.</p>
+          <figure style="margin-top:12px;">
+            <img src="assets/dolly-zoom.gif" alt="Animated GIF showing dolly zoom effect" style="aspect-ratio:auto;" />
+            <figcaption>Result: Background appears to stretch and contract while subject size stays similar.</figcaption>
+          </figure>
+          
+        </div>
+      </section>
+
+    </main>
+  </body>
+</html>
 

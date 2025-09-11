@@ -102,7 +102,7 @@
       <section id="overview">
         <h2>Overview</h2>
         <div class="card">
-          <p>How i did this</p>
+          <p>Taking three exposures with a blue, green, and red filter separately, I split each file into the three images. Then, to align the images I used the blue filtered image as a reference and aligned the green and red filtered images on top of it. Specifically, I used an L2 norm to map pixels from the red then green images to the closest looking pixel within a local sub-region of the reference blue image. I also cropped the image to prevent the image frame and other digitalization cropping errors of the glass image from interfering with the image alignment. For larger images, it was necessary to create an image pyramid. Here the image was rescaled by half until it was small enough to process quickly. To keep the translation accurate from the rescaled image alignment to the properly scaled image, the (x, y) translation was multiplied by 2 for each rescale that took place. </p>
         </div>
       </section>
 
@@ -172,6 +172,7 @@
     </main>
   </body>
 </html>
+
 
 
 

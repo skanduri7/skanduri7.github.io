@@ -1,1 +1,122 @@
 
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CS180 Project 2: Fun with Filters and Frequencies!</title>
+    <meta name="description" content="Project 2: Fun with Filters and Frequencies!" />
+    <meta property="og:title" content="CS180 Project 2: Fun with Filters and Frequencies!" />
+    <meta property="og:description" content="Fun with Filters and Frequencies!" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0d1b2a" />
+
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #121a2b;
+        --muted: #9fb3c8;
+        --text: #e6edf3;
+        --link: #7cc4ff;
+        --accent: #9ef0ff;
+        --ring: rgba(126, 200, 255, 0.35);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
+        background: radial-gradient(1200px 600px at 20% -10%, #12213f 0%, #0b1220 50%, #0b1220 100%);
+      }
+      a { color: var(--link); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      header {
+        position: sticky; top: 0; z-index: 40;
+        backdrop-filter: blur(10px);
+        background: linear-gradient(180deg, rgba(11,18,32,0.9), rgba(11,18,32,0.6) 60%, transparent);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+      .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; }
+      .brand { font-weight: 700; letter-spacing: 0.4px; }
+      .brand small { color: var(--muted); font-weight: 500; }
+      .nav a { padding: 8px 10px; border-radius: 10px; }
+      .nav a:hover { background: rgba(255,255,255,0.06); text-decoration: none; }
+
+      .hero {
+        padding: 48px 0 16px;
+      }
+      .hero h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.15; margin: 0 0 6px; }
+      .hero p { margin: 6px 0 0; color: var(--muted); }
+
+      .card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+      }
+      section { padding: 18px 0 8px; }
+      section h2 { font-size: clamp(22px, 3vw, 30px); margin: 6px 0 8px; }
+      section h3 { font-size: 18px; margin: 12px 0 6px; color: var(--accent); }
+
+      .grid { display: grid; gap: 16px; }
+      .grid.two { grid-template-columns: repeat(1, 1fr); }
+      .grid.fourteen {display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));}
+      @media (min-width: 760px) { .grid.two { grid-template-columns: repeat(2, 1fr); } }
+
+      figure { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.07); background: #0f1626; }
+      figure img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; }
+      figcaption { font-size: 14px; color: var(--muted); padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+      .caption { color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); padding: 8px 12px; background: rgba(158, 240, 255, 0.06); border-radius: 10px; }
+      .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(124, 196, 255, 0.15); border: 1px solid rgba(124,196,255,0.3); color: var(--link); font-size: 12px; }
+
+      footer { color: var(--muted); padding: 40px 0; text-align: center; }
+
+      @media print {
+        body { background: #fff; color: #000; }
+        header { display: none; }
+        .card { box-shadow: none; border-color: #ddd; }
+        a { color: #000; text-decoration: underline; }
+        figure img { aspect-ratio: auto; }
+      }
+
+      .backtotop { position: fixed; right: 18px; bottom: 18px; border-radius: 999px; background: #141d31; color: var(--text); padding: 10px 12px; border: 1px solid rgba(255,255,255,0.08); cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
+      .backtotop:hover { background: #0f1626; }
+    </style>
+  </head>
+  
+  <body>
+    <main class="container">
+      <section class="hero">
+        <div class="card">
+          <h1>CS180/280A Project 2</h1>
+          <p class="caption">Saaketh Kanduri, Fall 2025</p>
+          <p class="callout" style="margin-top:10px;">In this project we build and experiment with filters and use them to combine images</p>
+        </div>
+      </section>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <div class="card">
+          <p></p>
+        </div>
+      </section>
+
+      
+
+    </main>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+

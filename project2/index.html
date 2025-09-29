@@ -63,9 +63,13 @@
 
       .grid { display: grid; gap: 16px; }
       .grid.two { grid-template-columns: repeat(1, 1fr); }
-      .grid.four {display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));}
+      .grid.four { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr);}
+      .grid.four-row { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); }
       .grid.fourteen {display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));}
       @media (min-width: 760px) { .grid.two { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 760px) { 
+        .grid.four-row { grid-template-columns: repeat(2, 1fr); } /* Stack to 2x2 on mobile */
+      }
 
       figure { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.07); background: #0f1626; }
       figure img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; }
@@ -96,63 +100,65 @@
         <div class="card">
           <h1>CS180/280A Project 2</h1>
           <p class="caption">Saaketh Kanduri, Fall 2025</p>
-          <p class="callout" style="margin-top:10px;">In this project we build and experiment with filters and use them to combine images</p>
+          <p class="callout" style="margin-top:10px;">This project builds and experiments with filters and uses them to combine images</p>
         </div>
       </section>
 
       <section id="overview">
         <h2>Overview</h2>
         <div class="card">
-          <p></p>
+          <p>This project explores image processing with filters and different frequencies. I implemented convolution operations from scratch, detected edges using certain filters, and created hybrid images by combining low and high frequencies.</p>
         </div>
       </section>
 
       <section id="part1-1">
-        <h2>Part 1.1: Finite Difference Operator</h2>
+        <h2>Part 1.1: Convolutions from Scratch!</h2>
         <div class="card">
-          <p>In this section, I implemented two convolution functions, one with four for loops and one with two for loops. I also compared performance with scipy's built-in convolution function.</p>
-          
+
           <h3>Convolution Implementation</h3>
-          <p>Here's our numpy-only convolution implementation with proper zero-padding:</p>
           
           <div class="callout" style="margin: 16px 0;">
-            <strong>Implementation Details:</strong> The convolution is implemented using nested loops to iterate over the input image and kernel. Padding ensures that the output has the same dimensions as the input, handling boundaries by filling with zeros.
+            <strong>Implementation Details:</strong>  In this section, I implemented two convolution functions, one with four for loops and one with two for loops. I also compared performance with scipy's convolution function. The convolution is implemented using nested loops to iterate over the input image and kernel. Padding ensures that the output has the same dimensions as the input, handling boundaries by filling with zeros.
           </div>
 
           <div style="background: #0f1626; border-radius: 10px; padding: 16px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.08);">
             <pre style="margin: 0; color: var(--text); font-family: 'Monaco', 'Consolas', monospace; font-size: 14px; line-height: 1.4; overflow-x: auto;">
               <code>
 def conv2d_four(img, kernel):
-    H, W = img.shape
     h, w = kernel.shape
 
-    conv = np.zeros_like(img, dtype=np.float32)
+    conv = np.zeros_like(img)
 
-    pad = np.pad(img, ((h // 2, h // 2),(w // 2, w // 2)), mode='constant')
+    pdims = ((h // 2, h // 2),(w // 2, w // 2))
+
+    pad = np.pad(img, pdims, mode='constant')
     kernal_flipped = np.flipud(np.fliplr(kernel))
 
-    for y in range(H):
-        for x in range(W):
+    for y in range(img.shape[0]):
+        for x in range(img.shape[1]):
+
             temp_conv = 0.0
-            for i in range(h):
-                for j in range(w):
-                    temp_conv += pad[y + i, x + j] * kernal_flipped[i, j]
+
+            for r in range(h):
+                for c in range(w):
+                    temp_conv += pad[y + r, x + c] * kernal_flipped[r, c]
 
             conv[y, x] = temp_conv
 
     return conv
 
 def conv2d_two(img, kernel):
-    H, W = img.shape
     h, w = kernel.shape
 
     conv = np.zeros_like(img)
 
-    pad = np.pad(img, ((h // 2, h // 2),(w // 2, w // 2)), mode='constant')
+    pdims = ((h // 2, h // 2),(w // 2, w // 2))
+
+    pad = np.pad(img, pdims, mode='constant')
     kernal_flipped = np.flipud(np.fliplr(kernel))
 
-    for y in range(H):
-        for x in range(W):
+    for y in range(img.shape[0]):
+        for x in range(img.shape[1]):
             conv[y, x] = np.sum(pad[y: y + h, x: x + w] * kernal_flipped)
 
     return conv
@@ -160,30 +166,27 @@ def conv2d_two(img, kernel):
             </pre>
           </div>
 
-          <h3>Performance Comparison</h3>
-          <p>Comparing our implementation with scipy.signal.convolve2d:</p>
+          <h3>Runtime and Boundary Notes</h3>
           
-          <div class="grid two" style="margin: 16px 0;">
               <h4>Runtime Results</h4>
               <ul style="margin: 8px 0; padding-left: 20px;">
                 <li><strong>Four loop implementation:</strong> 2.1811 sec, 0.1661 sec, 0.1742 sec, for an average of 0.8405 sec</li>
                 <li><strong>Two loop implementation:</strong>  0.2596 sec, 0.2306 sec, 0.2275 sec, for an average of 0.2392 sec</li>
                 <li><strong>scipy.signal.convolve2d:</strong> 0.0122 sec, 0.0012 sec, 0.0013 sec, for an average of 0.0049</li>
               </ul>
-              <p>My implementations of the convolutions were the four look and two loop. On average and when the kernel was not very small the four loop predictably was the slowest. When a smaller kernel was used the four loop moved slightly faster then the two loop. The built-in scipy convolution function was by far the fastest.</p>
-            </div>
+              <p>My implementations of the convolutions were the four loop and two loop. On average and when the kernel was not very small the four loop predictably was the slowest. When a smaller kernel was used the four loop moved slightly faster then the two loop. The scipy convolution function was by far the fastest.</p>
             
           
               <h4>Boundary Handling</h4>
               <ul style="margin: 8px 0; padding-left: 20px;">
-                <li><strong>Our implementation:</strong> Used zero padding as per instructions, where the image frame was padded with zeros to keep image size consistent. </li>
+                <li><strong>Our implementation:</strong> Used zero padding as per instructions, where the image frame was padded with zeros to keep image size consistent. We padded the image by half of each of the kernel dimension sizes. This was done so that each pixel can be the center of the convolution kernel.</li>
                 <li><strong>scipy.signal.convolve2d:</strong> To keep consistency, used the option to have zero padding </li>
               </ul>
-            </div>
-          </div>
 
-          <h3>Applied Filters</h3>
+          <h3>Filters and Results</h3>
           <p>Testing our convolution implementation with different filters on a self-portrait:</p>
+
+          The box filter creates a blur effect by averaging neighboring pixels. The Dx and Dy operators detect edges by detecting rates of change horizontally (vertical lines) and vertically (horizontal lines).
 
           <div class="grid four" style="margin: 16px 0;">
             <figure>
@@ -198,30 +201,484 @@ def conv2d_two(img, kernel):
             
             <figure>
               <img src="results/p11/p11_conv_dx.jpg" alt="Dx filter showing vertical edges">
-              <figcaption>Dx filter (vertical edges)</figcaption>
+              <figcaption>DX filter (vertical edges)</figcaption>
             </figure>
             
             <figure>
               <img src="results/p11/p11_conv_dy.jpg" alt="Dy filter showing horizontal edges">
-              <figcaption>Dy filter (horizontal edges)</figcaption>
+              <figcaption>DY filter (horizontal edges)</figcaption>
             </figure>
           </div>
 
-          <h3>Filter Kernels Used</h3>
           <div style="background: #0f1626; border-radius: 10px; padding: 16px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.08);">
             <pre style="margin: 0; color: var(--text); font-family: 'Monaco', 'Consolas', monospace; font-size: 14px; line-height: 1.4;">
               <code>
 box = np.ones((9, 9)) / 81
 
-Dx = np.array([[1, 0, -1]])
-Dy = np.array([[1], [0], [-1]])
+DX = np.array([[1, 0, -1]])
+DY = np.array([[1], [0], [-1]])
               </code>
             </pre>
           </div>
+        </div>
+      </section>
+
+
+      <section id="part1-2">
+        <div class="card">
+        <h2>Part 1.2: Finite Difference Operator</h2>
+
+        <div style="display: flex; justify-content: center; margin: 16px 0;">
+          <figure style="max-width: 400px;">
+            <img src="data/cameraman.png" alt="Cameraman reference image">
+            <figcaption>Cameraman - Reference image</figcaption>
+          </figure>
+        </div>
+
+        I took the above image of the camera man and used the DX and DY filters to detect the vertical and horizontal edges respectively. Combining the filted images that resulted from DX and DY, I created a gradient image. The gradient image essentially highlights the quick rates of change in both x and y directions effectively being a very fine grained edge detection. From the gradient image, I only outputted pixel values above a certain threshold to highlight the most important edges to get the Edges picture. I used this certain threshold so we can clearly see the subject matter which is the cameraman and the edges picture picks up nothing else.
+
+        <div class="grid four" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p12/p12_grad.jpg" alt="grad">
+              <figcaption>Gradient</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p12/p12_edge.jpg" alt="edge">
+              <figcaption>Edges</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p12/p12_imgdx.jpg" alt="DY filter showing vertical edges">
+              <figcaption>DX filter (vertical edges)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p12/p12_imgdy.jpg" alt="DY filter showing horizontal edges">
+              <figcaption>DY filter (horizontal edges)</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+
+      <section id="part1-3">
+        <div class="card">
+          <h2>Part 1.3: Derivative of Gaussian (DoG) Filter</h2>
+          
+          <p>I constructed an initial gaussian filter to build two derivative of gaussian (DoG) filters, using it on the DX and DY filters. I applied the combined filter on the image and compare this to applying each of the filters by themselves. Theoretically they should be the same smoothed edge image. I also compare with the results from the previous section to show how using a gaussian filter can provide for smoothing</p>
+
+          <h3>DoG Filter and Results</h3>
+          <p>The two images below are the two resulting DoG filters after combining the gaussian with DX and DY:</p>
+
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p13/p13_gdx_DoG.jpg" alt="DoG X derivative">
+              <figcaption>DoG X (Gaussian + Dx)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p13/p13_gdy_DoG.jpg" alt="DoG Y derivative">
+              <figcaption>DoG Y (Gaussian + Dy)</figcaption>
+            </figure>
+            
+          </div>
+
+          <h3>Comparison: DoG vs Gaussian with Finite Difference Operators</h3>
+          <div class="callout" style="margin: 16px 0;">
+          As you can see using the two filters combined (left) and using each filter, first the gaussian, then DX and DY (right) results in just about the same image.
+          </div>
+          <div class="grid two" style="margin: 16px 0;">
+          <figure>
+              <img src="results/p13/p13_edge_DoG.jpg" alt="DoG edge detection">
+              <figcaption>DoG Edge Detection</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p13/p13_edge.jpg" alt="Smoothed edges">
+              <figcaption>Gaussian Smoothed Edges</figcaption>
+            </figure>
+            </div>
+
+          <h3>Comparison: DoG vs Finite Difference</h3>
+          
+          <div class="callout" style="margin: 16px 0;">
+            <strong>Key Differences:</strong> The DoG filters produce smoother, less noisy edge detection compared to raw finite difference operators. The Gaussian smoothing reduces high-frequency noise while preserving important edge information.
+          </div>
+
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p13/p13_edge.jpg" alt="Finite difference Dx">
+              <figcaption>DoG (from Part 1.3)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p12/p12_edge.jpg" alt="Finite difference Dy">
+              <figcaption>Finite Difference (from Part 1.2)</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="part2-1">
+        <div class="card">
+          <h2>Part 2.1: Image "Sharpening"</h2>
+          
+          <div class="callout" style="margin: 16px 0;">
+            <strong>Unsharp Mask Formula:</strong> Sharpened = Original + α × (Original - Blurred)<br>
+            <ul style="margin: 8px 0; padding-left: 20px;">
+              <li><strong>Step 1:</strong> Blur the original image to remove high frequencies</li>
+              <li><strong>Step 2:</strong> Subtract blurred from original to isolate high frequencies</li>
+              <li><strong>Step 3:</strong> Add scaled high frequencies back to original image</li>
+              <li><strong>Result:</strong> Enhanced edges and details while preserving overall image structure</li>
+              <li><strong>Parameter α:</strong> Higher values create stronger sharpening but may introduce artifacts</li>
+            </ul>
+            Here, α controls the sharpening amount and (Original - Blurred) extracts high frequencies. The blurred image is essentially the low frequency version. To sharpen an image then, intuitively, it makes sense to use the opposite of blurry effect which is what we do when we add the scaled difference of the original and blurry image. So, the addition we make to our image is the high frequency, essentially the difference of the original and blurry image.
+          </div>
+
+          <h3>Taj Mahal Results</h3>
+          <p>Demonstrating the unsharp mask process step by step:</p>
+
+          <div class="grid four" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p21/ref_taj.jpg" alt="Original Taj Mahal">
+              <figcaption>Original Taj Mahal</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p21/blurred_taj.jpg" alt="Blurred Taj Mahal">
+              <figcaption>Blurred (Gaussian filter)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p21/high_freq_taj.jpg" alt="High frequency component">
+              <figcaption>High Frequencies (Original - Blurred)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p21/sharp_taj.jpg" alt="Sharpened Taj Mahal">
+              <figcaption>Sharpened Result</figcaption>
+            </figure>
+          </div>
+
+          <h3>Runner Image Results</h3>
+          <p>Applying the same process to a runner image:</p>
+
+          <div class="grid four" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p21/ref_runner.jpg" alt="Original runner">
+              <figcaption>Original Runner</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p21/blurred_runner.jpg" alt="Blurred runner">
+              <figcaption>Blurred (Gaussian filter)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p21/high_freq_runner.jpg" alt="High frequency runner">
+              <figcaption>High Frequencies (Original - Blurred)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p21/sharp_runner.jpg" alt="Sharpened runner">
+              <figcaption>Sharpened Result</figcaption>
+            </figure>
+          </div>
+
+          <h3>Varying Sharpening Amount</h3>
 
           <div class="callout" style="margin: 16px 0;">
-            The box filter creates a blur effect by averaging neighboring pixels. The Dx and Dy operators detect edges by detecting rates of change horizontally (vertical lines) and vertically (horizontal lines).
+            The images below are demonstrating how different α values affect the sharpening intensity. The left images have α = 1 while the right has α = 3. As we increase α as we see darker lines from the Taj Mahal and the shadow for the runner becomes darker. The water in the runner image and the design in the design for the Taj Mahal also appear more pronounced.
+         </div>
+
+          <div class="grid four" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p21/sharp_taj.jpg" alt="Moderate sharpening Taj">
+              <figcaption>Taj Mahal - Moderate Sharpening</figcaption>
+            </figure>
+          
+            <figure>
+              <img src="results/p21/sharper_taj.jpg" alt="Strong sharpening Taj">
+              <figcaption>Taj Mahal - Strong Sharpening</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p21/sharp_runner.jpg" alt="Moderate sharpening runner">
+              <figcaption>Runner - Moderate Sharpening</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p21/sharper_runner.jpg" alt="Strong sharpening runner">
+              <figcaption>Runner - Strong Sharpening</figcaption>
+            </figure>
           </div>
+        </div>
+      </section>
+
+      <section id="part2-2">
+        <div class="card">
+          <h2>Part 2.2: Hybrid Images</h2>
+          
+          <div class="callout" style="margin: 16px 0;">
+            <strong>Hybrid Image Technique:</strong> By combining the low frequencies of one image with the high frequencies of another, we create images that appear different when viewed from different distances. Close up, you see the high-frequency image, while from far away, only the low-frequency image is visible.
+          </div>
+
+
+          <h3>Old + Young: Highlighting the Complete Process</h3>
+
+          <h4>Original and Aligned Images</h4>
+          <div class="callout" style="margin: 16px 0;">
+           We have to align the images so we can overlay the faces to truly see the effects.
+          </div>
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="data/part_2_2_pair3/old.jpg" alt="Old person original">
+              <figcaption>Older Person (Original)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="data/part_2_2_pair3/young.jpg" alt="Young person original">
+              <figcaption>Younger Person (Original)</figcaption>
+            </figure>
+          </div>
+
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p22/aligned_ref_image2.jpg" alt="Old person aligned">
+              <figcaption>Older Person (Aligned)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p22/aligned_ref_image1.jpg" alt="Young person aligned">
+              <figcaption>Younger Person (Aligned)</figcaption>
+            </figure>
+          </div>
+
+          <h4>Fourier Transform Analysis and Cutoff Frequency</h4>
+          <div class="callout" style="margin: 16px 0;">
+            <strong>FFT Visualization:</strong> 
+            <p>
+            The Fourier transform shows the frequency content of images. We can see below the low pass makes the input image 2 much more darker besides the center which becomes brighter. The high pass on input image 1 does the opposite as the rays become brighter and longer. This happens because the gaussian low pass filtering tries to preserve only the center / normal frequencies, while high pass filtering limits the center / normal frequencies and increases edge information, which appears as rays. It can be seen that the hybrid FFT looks like the high pass and the low pass combined.
+            </p>
+            <strong>Cutoff Frequency Choice:</strong>
+            <p>I used σ = 4.0 for the low pass filter and σ = 12.0 for the high pass filter. Smaller σ values creates a tighter Gaussian that preserves only very low frequencies, keeping the overall facial structure while removing fine details. Naturally, a bigger σ value corresponds to a high pass, which allows us to capture sharper details without including as much low frequency information. This combination allows the low frequency image to dominate at distance while the high frequency details are visible up close.</p>
+          </div>
+          
+          <div style="margin: 16px 0;">
+            <figure style="border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.07); background: #0f1626;">
+              <img src="results/p22/fft.png" alt="FFT analysis" style="width: 100%; height: 200px; object-fit: contain; display: block;">
+            </figure>
+          </div>
+
+          <h4>Frequency Filtering Images</h4>
+          <div class="callout" style="margin: 16px 0;">
+          The left image is blurred / has lower frequencies. The right image is sharpened / has higher frequencies:
+          </div>
+
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p22/low_ref.jpg" alt="Low frequency component">
+              <figcaption>Low Frequencies</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p22/high_ref.jpg" alt="High frequency component">
+              <figcaption>High Frequencies</figcaption>
+            </figure>
+          </div>
+
+          <h4>Hybrid Result</h4>
+          <p>The final hybrid image combining low frequencies from one image with high frequencies from another:</p>
+
+          <div style="margin: 16px 0;">
+            <figure>
+              <img src="results/p22/hybrid_3.jpg" alt="Final hybrid" style="aspect-ratio: auto; object-fit: contain;">
+              <figcaption>Final Old + Young Hybrid</figcaption>
+            </figure>
+          </div>
+
+  
+
+          <h3>Derek + Nutmeg Hybrid</h3>
+
+          <div class="grid" style="margin: 16px 0; grid-template-columns: repeat(3, 1fr);">
+            <figure>
+              <img src="data/part_2_2_pair1/DerekPicture.jpg" alt="Derek original">
+              <figcaption>Derek (Original)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="data/part_2_2_pair1/nutmeg.jpg" alt="Nutmeg original">
+              <figcaption>Nutmeg (Original)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p22/hybrid_1.jpg" alt="Derek Nutmeg hybrid">
+              <figcaption>Derek + Nutmeg Hybrid</figcaption>
+            </figure>
+          </div>
+
+          <h3>Lebron + Goat Hybrid</h3>
+          <div class="grid" style="margin: 16px 0; grid-template-columns: repeat(3, 1fr);">
+            <figure>
+              <img src="data/part_2_2_pair2/bball_player.jpg" alt="Basketball player original">
+              <figcaption>LeBron (Original)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="data/part_2_2_pair2/goat.jpg" alt="Goat original">
+              <figcaption>Goat (Original)</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p22/hybrid_2.jpg" alt="Basketball player goat hybrid">
+              <figcaption>LeBron + Goat Hybrid</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="part234" class="content-section">
+        <div class="card">
+          <h2>Part 2.3 + 2.4: Gaussian and Laplacian Stacks & Multi-resolution Blending</h2>
+          
+          <p> Gaussian and Laplacian Stacks allows for seamless image blending by filtering each image into different frequency levels and combining them pairwise on the same frequency. This creates smooth transitions without straight lines that occur with simple layovers.</p>
+
+          <h3>Recreation of Figure 3.42: Orange + Apple Blending Process</h3>
+          
+          <p>Below is the complete visualization process that recreates Figure 3.42 from the textbook, showing the full pipeline from original images through Gaussian stacks, Laplacian decomposition, and final blending:</p>
+          
+          <figure class="wide-figure">
+            <img src="results/p234/figure_342_pair1.png" alt="Complete Figure 3.42 Recreation showing Gaussian and Laplacian stacks" style="width: 100%; height: auto; aspect-ratio: unset; object-fit: unset;">
+            <figcaption>Figure 3.42 Recreation</figcaption>
+          </figure>
+          
+          <div class="explanation">
+            <ul>
+              <li><strong>Bottom left and bottom middle:</strong> Original apple and orange images</li>
+              <li><strong>Middle column:</strong> Gaussian stack levels for the orange</li>
+              <li><strong>Left column:</strong> Gaussian stack levels for the apple</li>
+              <li><strong>Right column:</strong> Sum of apple and orange from that row</li>
+              <li><strong>Bottom right:</strong> Final blended result using multi-resolution technique</li>
+            </ul>
+          </div>
+
+          <h3>Gaussian and Laplacian Stacks Breakdown</h3>
+          
+          <h4>Gaussian Stacks</h4>
+          <p>The Gaussian stacks show the progressive smoothing of each image through multiple levels of Gaussian blurring:</p>
+          
+          <div class="grid four-row" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p234/g1_stack_0.jpg" alt="Gaussian stack level 0 for image 1">
+              <figcaption>Orange - Level 0</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/g1_stack_1.jpg" alt="Gaussian stack level 1 for image 1">
+              <figcaption>Orange - Level 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/g1_stack_2.jpg" alt="Gaussian stack level 2 for image 1">
+              <figcaption>Orange - Level 2</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/g1_stack_3.jpg" alt="Gaussian stack level 3 for image 1">
+              <figcaption>Orange - Level 3</figcaption>
+            </figure>
+          </div>
+          
+          <div class="grid four-row" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p234/g2_stack_0.jpg" alt="Gaussian stack level 0 for image 2">
+              <figcaption>Apple - Level 0</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/g2_stack_1.jpg" alt="Gaussian stack level 1 for image 2">
+              <figcaption>Apple - Level 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/g2_stack_2.jpg" alt="Gaussian stack level 2 for image 2">
+              <figcaption>Apple - Level 2</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/g2_stack_3.jpg" alt="Gaussian stack level 3 for image 2">
+              <figcaption>Apple - Level 3</figcaption>
+            </figure>
+          </div>
+
+          <h4>Laplacian Stacks</h4>
+          <p>The Laplacian stacks get the high frequency details at between each level by getting the difference between consecutive Gaussian levels. They are dark because they pick up the high frequencies</p>
+          
+          <div class="grid four-row" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p234/l1_stack_0.jpg" alt="Laplacian stack level 0 for image 1">
+              <figcaption>Orange - Level 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/l1_stack_1.jpg" alt="Laplacian stack level 1 for image 1">
+              <figcaption>Orange - Level 2</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/l1_stack_2.jpg" alt="Laplacian stack level 2 for image 1">
+              <figcaption>Orange - Level 4</figcaption>
+            </figure>
+          </div>
+          
+          <div class="grid four-row" style="margin: 16px 0;">
+            <figure>
+              <img src="results/p234/l2_stack_0.jpg" alt="Laplacian stack level 0 for image 2">
+              <figcaption>Apple - Level 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/l2_stack_1.jpg" alt="Laplacian stack level 1 for image 2">
+              <figcaption>Apple - Level 2</figcaption>
+            </figure>
+            <figure>
+              <img src="results/p234/l2_stack_2.jpg" alt="Laplacian stack level 2 for image 2">
+              <figcaption>Apple - Level 4</figcaption>
+            </figure>
+          </div>
+
+          <h3>Additional Custom Blending Examples</h3>
+          
+          <h4>Pair 2: Lemon + Football Blending</h4>
+          <div class="grid" style="margin: 16px 0; grid-template-columns: repeat(3, 1fr);">
+            <figure>
+              <img src="data/part_2_3-4_pair2/lemon.png" alt="Giraffe original">
+              <figcaption>Lemon</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="data/part_2_3-4_pair2/football.png" alt="Monkey original">
+              <figcaption>Football</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p234/hybrid_image2.jpg" alt="Giraffe Monkey blend">
+              <figcaption>Lemon + Football Blend</figcaption>
+            </figure>
+          </div>
+          
+          <h4>Pair 3: Bagels + Donuts Blending (Circle Mask)</h4>
+          <div class="grid" style="margin: 16px 0; grid-template-columns: repeat(3, 1fr);">
+            <figure>
+              <img src="data/part_2_3-4_pair3/bagels.jpg" alt="Bagels original">
+              <figcaption>Bagels</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="data/part_2_3-4_pair3/donuts.jpg" alt="Donuts original">
+              <figcaption>Donuts</figcaption>
+            </figure>
+            
+            <figure>
+              <img src="results/p234/hybrid_image3.jpg" alt="Bagels Donuts blend with irregular mask">
+              <figcaption>Bagels + Donuts Blend (Irregular Mask)</figcaption>
+            </figure>
+          </div>
+
+          
         </div>
       </section>
 

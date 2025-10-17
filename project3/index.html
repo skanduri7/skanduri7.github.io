@@ -1,1 +1,562 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CS180 Project 3: Image Warping and Mosaicing</title>
+    <meta name="description" content="Project 3: Image Warping and Mosaicing" />
+    <meta property="og:title" content="CS180 Project 3: Image Warping and Mosaicing" />
+    <meta property="og:description" content="Image Warping and Mosaicing with Homographies" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0d1b2a" />
 
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #121a2b;
+        --muted: #9fb3c8;
+        --text: #e6edf3;
+        --link: #7cc4ff;
+        --accent: #9ef0ff;
+        --ring: rgba(126, 200, 255, 0.35);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
+        background: radial-gradient(1200px 600px at 20% -10%, #12213f 0%, #0b1220 50%, #0b1220 100%);
+      }
+      a { color: var(--link); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      header {
+        position: sticky; top: 0; z-index: 40;
+        backdrop-filter: blur(10px);
+        background: linear-gradient(180deg, rgba(11,18,32,0.9), rgba(11,18,32,0.6) 60%, transparent);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+      .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; }
+      .brand { font-weight: 700; letter-spacing: 0.4px; }
+      .brand small { color: var(--muted); font-weight: 500; }
+      .nav a { padding: 8px 10px; border-radius: 10px; }
+      .nav a:hover { background: rgba(255,255,255,0.06); text-decoration: none; }
+
+      .hero {
+        padding: 48px 0 16px;
+      }
+      .hero h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.15; margin: 0 0 6px; }
+      .hero p { margin: 6px 0 0; color: var(--muted); }
+
+      .card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+      }
+      section { padding: 18px 0 8px; }
+      section h2 { font-size: clamp(22px, 3vw, 30px); margin: 6px 0 8px; }
+      section h3 { font-size: 18px; margin: 12px 0 6px; color: var(--accent); }
+
+      .grid { display: grid; gap: 16px; }
+      .grid.two { grid-template-columns: repeat(1, 1fr); }
+      .grid.four { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr);}
+      .grid.four-row { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); }
+      .grid.three { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+      .grid.five { display: grid; gap: 16px; grid-template-columns: repeat(5, 1fr); }
+      @media (min-width: 760px) { .grid.two { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 760px) { 
+        .grid.four-row { grid-template-columns: repeat(2, 1fr); } /* Stack to 2x2 on mobile */
+        .grid.three { grid-template-columns: repeat(1, 1fr); } /* Stack to single column on mobile */
+        .grid.five { grid-template-columns: repeat(2, 1fr); } /* Stack to 2 columns on mobile */
+      }
+
+      figure { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.07); background: #0f1626; }
+      figure img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; }
+      figcaption { font-size: 14px; color: var(--muted); padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+      .caption { color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); padding: 8px 12px; background: rgba(158, 240, 255, 0.06); border-radius: 10px; }
+      .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(124, 196, 255, 0.15); border: 1px solid rgba(124,196,255,0.3); color: var(--link); font-size: 12px; }
+
+      footer { color: var(--muted); padding: 40px 0; text-align: center; }
+
+      @media print {
+        body { background: #fff; color: #000; }
+        header { display: none; }
+        .card { box-shadow: none; border-color: #ddd; }
+        a { color: #000; text-decoration: underline; }
+        figure img { aspect-ratio: auto; }
+      }
+
+      .backtotop { position: fixed; right: 18px; bottom: 18px; border-radius: 999px; background: #141d31; color: var(--text); padding: 10px 12px; border: 1px solid rgba(255,255,255,0.08); cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
+      .backtotop:hover { background: #0f1626; }
+
+      .matrix { font-family: 'Monaco', 'Consolas', monospace; font-size: 14px; background: #0f1626; border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.08); margin: 12px 0; }
+      pre { margin: 0; color: var(--text); overflow-x: auto; }
+    </style>
+  </head>
+  
+  <body>
+    <main class="container">
+      <section class="hero">
+        <div class="card">
+          <h1>CS180/280A Project 3</h1>
+          <p class="caption">Saaketh Kanduri, Fall 2025</p>
+          <p class="callout" style="margin-top:10px;">This project explores image warping and mosaicing using homography transformations</p>
+        </div>
+      </section>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <div class="card">
+            <p>This project explores image warping and mosaicing using homography transformations. I captured multiple sets of overlapping photographs and implemented algorithms to compute homographies from point correspondences, warp images using different interpolation methods, and blend them into panoramic mosaics. </p>
+        </div>
+      </section>
+
+      <section id="part1">
+        <h2>A.1: Shoot the Pictures</h2>
+        <div class="card">
+          <p>I captured multiple sets of photographs with projective transformations between them by fixing the center of projection and rotating the camera. The images have some overlap to create correspondance points to create the homography matrix.</p>
+          
+          <h3>Image Set 1: Two Images</h3>
+          <p>Street view of stores</p>
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/scene0_left.jpg" alt="Scene 0 left view">
+              <figcaption>Left view</figcaption>
+            </figure>
+            <figure>
+              <img src="results/scene0_right.jpg" alt="Scene 0 right view">
+              <figcaption>Right view</figcaption>
+            </figure>
+          </div>
+
+          <h3>Image Set 2: Three Images</h3>
+          <p>Bridge over water</p>
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/scene1_left.jpg" alt="Scene 1 left view">
+              <figcaption>Left view</figcaption>
+            </figure>
+            <figure>
+              <img src="results/scene1_middle.jpg" alt="Scene 1 middle view">
+              <figcaption>Middle view</figcaption>
+            </figure>
+            <figure>
+              <img src="results/scene1_right.jpg" alt="Scene 1 right view">
+              <figcaption>Right view</figcaption>
+            </figure>
+          </div>
+
+          <h3>Image Set 3: Five Images</h3>
+          <p>Marsh by the Bay</p>
+          <div class="grid five" style="margin: 16px 0;">
+            <figure>
+              <img src="results/im_1.jpg" alt="Scene 2 far left view">
+              <figcaption>Far Left view</figcaption>
+            </figure>
+            <figure>
+              <img src="results/im_2.jpg" alt="Scene 2 left view">
+              <figcaption>Left view</figcaption>
+            </figure>
+            <figure>
+              <img src="results/im_3.jpg" alt="Scene 2 middle view">
+              <figcaption>Middle view</figcaption>
+            </figure>
+            <figure>
+              <img src="results/im_4.jpg" alt="Scene 2 right view">
+              <figcaption>Right view</figcaption>
+            </figure>
+            <figure>
+              <img src="results/im_5.jpg" alt="Scene 2 far right view">
+              <figcaption>Far Right view</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="part2">
+        <h2>A.2: Recover Homographies</h2>
+        <div class="card">
+          
+          <div class="callout" style="margin: 16px 0;">
+            <p>I implemented a function to recover homography matrices from point correspondences. The function sets up a linear system of equations based on the correspondance points and solves it using least squares.</p>
+            <strong>Mathematical Foundation:</strong> Given point correspondences (x, y) → (x', y'), we set up the equation system Ah = b where h contains the 8 unknown entries of the homography matrix H. Each point correspondence contributes two equations to the system.
+          </div>
+
+          <h3>Point Correspondences for 3-Image Set</h3>
+          <p>Using the 3-image room set, I manually selected corresponding features between adjacent pairs. For a 3-image mosaic, we need 2 sets of correspondences: Image1↔Image2 and Image2↔Image3.</p>
+          
+          <h4>Correspondence Points</h4>
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/correspondence_points_0_3.jpg" alt="Left-Center correspondences" style="aspect-ratio: auto;">
+              <figcaption>Correspondences between left and center images</figcaption>
+            </figure>
+            <figure>
+              <img src="results/correspondence_points_2_3.jpg" alt="Center-Right correspondences" style="aspect-ratio: auto;">
+              <figcaption>Correspondences between center and right images</figcaption>
+            </figure>
+          </div>
+
+
+          <h3>System of Equations</h3>
+          <p>For the 3-image mosaic, I solved two separate homography systems. Each uses 8 point correspondences, creating a 16 × 9 overdetermined system solved using least squares.</p>
+
+          <p>For each correspondence point (x, y) → (x', y'), we get two equations:</p>
+<p>x * h₁ + y * h₂ + h₃ - x' * x * h₇ - x' * y * h₈ = x'</p>
+<p>x * h₄ + y * h₅ + h₆ - y' * x * h₇ - y' * y * h₈ = y'</p>
+          
+          <h4>System 1: Left → Center Transformation</h4>
+          <div class="matrix">
+            <pre>
+ A                                                                    b
+ [ 0.324  -2.314   1.000   0.000   0.000   0.000   0.033  -0.236]     [-0.102]
+ [ 0.000   0.000   0.000   0.324  -2.314   1.000   0.749  -5.354]     [-2.314]
+ [ 0.264  -1.907   1.000   0.000   0.000   0.000   0.044  -0.317]     [-0.166]
+ [ 0.000   0.000   0.000   0.264  -1.907   1.000   0.513  -3.711]     [-1.946]
+ [ 0.233  -1.327   1.000   0.000   0.000   0.000   0.009  -0.050]     [-0.038]
+ [ 0.000   0.000   0.000   0.233  -1.327   1.000   0.314  -1.786]     [-1.345]
+ [-0.090   0.699   1.000   0.000   0.000   0.000   0.007  -0.052]     [ 0.074]
+ [ 0.000   0.000   0.000  -0.090   0.699   1.000   0.062  -0.480]     [ 0.687]
+ [-0.136   0.872   1.000   0.000   0.000   0.000   0.006  -0.037]     [ 0.042]
+ [ 0.000   0.000   0.000  -0.136   0.872   1.000   0.119  -0.767]     [ 0.879]
+ [-0.354   0.999   1.000   0.000   0.000   0.000  -0.050   0.142]     [-0.142]
+ [ 0.000   0.000   0.000  -0.354   0.999   1.000   0.396  -1.119]     [ 1.119]
+ [-0.429   1.354   1.000   0.000   0.000   0.000  -0.061   0.192]     [-0.142]
+ [ 0.000   0.000   0.000  -0.429   1.354   1.000   0.615  -1.938]     [ 1.431]
+ [ 0.188   1.625   1.000   0.000   0.000   0.000  -0.089  -0.770]     [ 0.474]
+ [ 0.000   0.000   0.000   0.188   1.625   1.000  -0.280  -2.417]     [ 1.487]
+            </pre>
+          </div>
+
+          <h4>System 2: Right → Center Transformation</h4>
+          <div class="matrix">
+            <pre>
+ A                                                                     b
+ [-0.341  -2.115   1.000   0.000   0.000   0.000   0.065   0.403]     [ 0.191]
+ [ 0.000   0.000   0.000  -0.341  -2.115   1.000  -0.723  -4.490]     [-2.123]
+ [-0.558  -1.757   1.000   0.000   0.000   0.000  -0.077  -0.242]     [-0.138]
+ [ 0.000   0.000   0.000  -0.558  -1.757   1.000  -1.027  -3.230]     [-1.838]
+ [-0.151  -1.160   1.000   0.000   0.000   0.000   0.010   0.077]     [ 0.067]
+ [ 0.000   0.000   0.000  -0.151  -1.160   1.000  -0.181  -1.387]     [-1.196]
+ [ 0.025   0.631   1.000   0.000   0.000   0.000   0.004   0.101]     [-0.160]
+ [ 0.000   0.000   0.000   0.025   0.631   1.000  -0.014  -0.355]     [ 0.563]
+ [-0.727   1.193   1.000   0.000   0.000   0.000  -0.673   1.105]     [-0.926]
+ [ 0.000   0.000   0.000  -0.727   1.193   1.000   0.621  -1.020]     [ 0.855]
+ [ 1.057   0.568   1.000   0.000   0.000   0.000  -0.965  -0.519]     [ 0.913]
+ [ 0.000   0.000   0.000   1.057   0.568   1.000  -0.981  -0.527]     [ 0.928]
+ [-0.144   1.531   1.000   0.000   0.000   0.000  -0.070   0.747]     [-0.488]
+ [ 0.000   0.000   0.000  -0.144   1.531   1.000   0.202  -2.146]     [ 1.402]
+ [ 0.839   1.109   1.000   0.000   0.000   0.000  -0.454  -0.600]     [ 0.541]
+ [ 0.000   0.000   0.000   0.839   1.109   1.000  -1.183  -1.563]     [ 1.409]
+            </pre>
+          </div>
+
+          <h3>Recovered Homography Matrices</h3>
+          
+          <h4>Left Image → Center Image</h4>
+          <div class="matrix">
+            <pre>
+H = [1.25898597e+00  2.52385746e-01 -1.13028792e+03]
+    [-2.48005829e-01  1.24847484e+00  2.90705446e+02]
+    [ 3.21786010e-04  3.56172145e-05  1.0000]
+            </pre>
+          </div>
+
+          <h4>Right Image → Center Image</h4>
+          <div class="matrix">
+            <pre>
+H = [ 2.99900823e-01 -2.29973909e-01  9.61853928e+02]
+    [ 3.33895907e-03  8.15973575e-01  3.69083141e+01]
+    [-4.86986656e-04 -3.11224653e-05  1.0000]
+            </pre>
+          </div>
+
+          <h4>Center Image (Identity - Reference)</h4>
+          <div class="matrix">
+            <pre>
+H = [[ 1.0000   0.0000   0.0000]
+     [ 0.0000   1.0000   0.0000]
+     [ 0.0000   0.0000   1.0000]]
+            </pre>
+          </div>
+
+          <p>The center image serves as the reference frame, so its homography is the identity matrix. The left and right images are warped to align with the center image coordinate system.</p>
+        </div>
+      </section>
+
+      <section id="part3">
+        <h2>A.3: Warp the Images</h2>
+        <div class="card">
+
+          <h3>Interpolation Method Comparison</h3>
+          <div class="callout" style="margin: 16px 0;">
+            <p>Comparing nearest neighbor vs bilinear interpolation quality:</p>
+            <p><strong>Quality vs Speed Trade-offs:</strong> Nearest neighbor is faster but produces blocky artifacts. Bilinear interpolation is slower but produces smoother results with better visual quality, especially noticeable in regions with high detail or curved edges.</p>
+            <p><strong>Nearest Neighbor:</strong> This method simply rounds the mapped coordinates to the nearest integer pixel location and uses that pixel's value directly. It is fast but can create jagged edges and blocky artifacts, especially when enlarging images or applying significant transformations.</p>
+            <p><strong>Bilinear:</strong> This method uses the four nearest pixels around the mapped coordinate and computes a weighted average based on the fractional distances to each neighbor. This creates smoother transitions between pixels and reduces aliasing artifacts, but requires more computation due to the interpolation calculations.</p>
+        </div>
+          
+          <div class="grid four" style="margin: 16px 0;">
+            <figure>
+              <img src="results/warped_nn_0_2.jpg" alt="Nearest neighbor warped">
+              <figcaption>Nearest neighbor interpolation</figcaption>
+            </figure>
+            <figure>
+              <img src="results/warped_0_2.jpg" alt="Bilinear warped">
+              <figcaption>Bilinear interpolation</figcaption>
+            </figure>
+            <figure style="overflow: hidden;">
+              <img src="results/warped_nn_0_2.jpg" alt="Nearest neighbor warped" style="aspect-ratio: 4/3; object-fit: none; object-position: center; transform: scale(3);">
+              <figcaption>Zoomed in Nearest neighbor interpolation</figcaption>
+            </figure>
+            <figure style="overflow: hidden;">
+              <img src="results/warped_0_2.jpg" alt="Bilinear warped" style="aspect-ratio: 4/3; object-fit: none; object-position: center; transform: scale(3);">
+              <figcaption>Zoomed in Bilinear interpolation</figcaption>
+            </figure>
+          </div>
+
+          <h3>Rectification Examples</h3>
+          <p>Testing the homography computation and warping by rectifying images containing rectangular objects:</p>
+          
+          <div class="grid four" style="margin: 16px 0;">
+            <figure>
+              <img src="results/rect_original1.jpg" alt="original1" style="aspect-ratio: auto;">
+              <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+              <img src="results/rect_original2.jpg" alt="original2" style="aspect-ratio: auto;">
+              <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+              <img src="results/rect_warped1.jpg" alt="Rectified original1" style="aspect-ratio: auto;">
+              <figcaption>Rectified</figcaption>
+            </figure>
+            <figure>
+              <img src="results/rect_warped2.jpg" alt="Rectified original2" style="aspect-ratio: auto;">
+              <figcaption>Rectified</figcaption>
+            </figure>
+          </div>
+
+          <p>For rectification, I manually selected the four corners of square objects that appeared like a parallelogram due to angling and mapped them to a perfect square, demonstrating that the homography computation and warping pipeline works correctly.</p>
+        </div>
+      </section>
+
+      <section id="part4">
+        <h2>A.4: Blend the Images into a Mosaic</h2>
+        <div class="card">
+          <div class="callout" style="margin: 16px 0;">
+          <h3>Procedure</h3>
+          <p>To create a mosaic, I warp all images using their respective homography matrices, translate each image into a common canvas coordinate system, use alpha masks for smooth blending, and finally combine them using weighted averaging. The process involves four steps: warping, translating, masking, and blending.</p>
+          </div>
+          <h3>3 Image Mosaic Process</h3>
+          
+          <div class="callout" style="margin: 16px 0;">
+          <h4>Step 1: Warped Images</h4>
+          <p>Each image is warped to the common canvas using the computed homographies. We do this by first computing the homograph matrix between each image and the image that is its immediate inner neighbor. After that we apply the translation matrix that maps the warped images to the big canvas:</p>
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/only_warp_0.jpg" alt="Warped left image" style="aspect-ratio: auto;">
+              <figcaption>Left image warped</figcaption>
+            </figure>
+            <figure>
+              <img src="results/only_warp_1.jpg" alt="Warped center image" style="aspect-ratio: auto;">
+              <figcaption>Center image warped</figcaption>
+            </figure>
+            <figure>
+              <img src="results/only_warp_2.jpg" alt="Warped right image" style="aspect-ratio: auto;">
+              <figcaption>Right image warped</figcaption>
+            </figure>
+          </div>
+          </div>
+
+          <div class="callout" style="margin: 16px 0;">
+          <h4>Step 2: Translating</h4>
+          <p>Translating the resulting images onto the common canvas:</p>
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/warped_0_3.jpg" alt="Left alpha mask">
+              <figcaption>translation for left image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/warped_1_3.jpg" alt="Center alpha mask">
+              <figcaption>translation for center image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/warped_2_3.jpg" alt="Right alpha mask">
+              <figcaption>translation for right image</figcaption>
+            </figure>
+          </div>
+          </div>
+
+          <div class="callout" style="margin: 16px 0;">
+          <h4>Step 3: Alpha Masks</h4>
+          <p>Alpha masks are generated for each warped image to enable smooth blending:</p>
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/alpha_0.jpg" alt="Left alpha mask" style="aspect-ratio: auto;">
+              <figcaption>Alpha mask for left image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/alpha_1.jpg" alt="Center alpha mask" style="aspect-ratio: auto;">
+              <figcaption>Alpha mask for center image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/alpha_2.jpg" alt="Right alpha mask" style="aspect-ratio: auto;">
+              <figcaption>Alpha mask for right image</figcaption>
+            </figure>
+          </div>
+          </div>
+          <div class="callout" style="margin: 16px 0;">
+          <h4>Step 4: Final Mosaic</h4>
+          <p>The warped images are blended using their alpha masks to create the seamless mosaic:</p>
+          <figure style="margin: 16px 0;">
+            <img src="results/mosaic_3.jpg" alt="3-image mosaic" style="aspect-ratio: 21/9;">
+            <figcaption>Final 3-image mosaic</figcaption>
+          </figure>
+
+          <h3>Additional Mosaics</h3>
+          
+          <h4>2 Image Mosaic</h4>
+          <figure style="margin: 16px 0;">
+            <img src="results/mosaic_2.jpg" alt="2-image mosaic" style="aspect-ratio: 16/9;">
+            <figcaption>2-image mosaic</figcaption>
+          </figure>
+
+          <h4>5 Image Mosaic</h4>
+          <figure style="margin: 16px 0;">
+            <img src="results/mosaic_5.jpg" alt="5-image mosaic" style="aspect-ratio: 24/9;">
+            <figcaption>5-image mosaic</figcaption>
+          </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="partb1">
+      <h2>B.1: Harris Corner Detection</h2>
+        <div class="card">
+        <div class="callout" style="margin: 16px 0;">
+          <p><strong>Harris Corner Detection:</strong> The Harris corner detector identifies interest points by analyzing the local structure of intensity gradients. This is our initial set of points of interest that we will filter down.</p>
+          <p><strong>Adaptive Non-Maximum Suppression (ANMS):</strong> After detecting Harris corners, ANMS selects a set of corner points. For each corner point, it computes the distance to the nearest stronger corner which is called the suppression radius. For this project, I made it so AMNS selects the top thousand points with the largest radius, ensuring we have features across the image rather than clustering in one high texture region.</p>
+        </div>
+
+        <h3>Point Detection</h3>
+        <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/pair_left.jpeg" alt="Nomral image" style="aspect-ratio: auto;">
+              <figcaption>Normal Image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/pair_left_harris.jpg" alt="Harris image" style="aspect-ratio: auto;">
+              <figcaption>Harris Corner Detection</figcaption>
+            </figure>
+            <figure>
+              <img src="results/pair_left_amns.jpg" alt="AMNS image" style="aspect-ratio: auto;">
+              <figcaption>AMNS</figcaption>
+            </figure>
+          </div>
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/pair_right.jpeg" alt="Nomral image" style="aspect-ratio: auto;">
+              <figcaption>Normal Image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/pair_right_harris.jpg" alt="Harris image" style="aspect-ratio: auto;">
+              <figcaption>Harris Corner Detection</figcaption>
+            </figure>
+            <figure>
+              <img src="results/pair_right_amns.jpg" alt="AMNS image" style="aspect-ratio: auto;">
+              <figcaption>AMNS</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="partb2">
+      <h2>B.2: Feature Descriptor Extraction</h2>
+      <div class="card">
+        <div class="callout" style="margin: 16px 0;">
+          <p><strong>Feature Descriptor Extraction:</strong> For each detected point, I extract its local image patch of size 40×40 pixels centered at the corner location. This patch is downsampled and normalized to an 8×8 pixel descriptor to focus on low frequencies. The descriptor essentially captures each interest point in a compact representation to search for.</p>
+          </div>
+         <h3>Normalized Feature Descriptors</h3>
+        <div class="grid four" style="margin: 16px 0;">
+            <figure>
+              <img src="results/pair_left.jpeg" alt="Nomral image" style="aspect-ratio: auto;">
+              <figcaption>Left Image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/pair_left_features.jpg" alt="25 features" style="aspect-ratio: auto;">
+              <figcaption>25 Features on left image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/pair_right.jpeg" alt="Nomral image" style="aspect-ratio: auto;">
+              <figcaption>Right Image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/pair_right_features.jpg" alt="25 features" style="aspect-ratio: auto;">
+              <figcaption>25 Features on right image</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="partb3">
+      <h2>B.3: Feature Matching</h2>
+       <div class="card">
+      <div class="callout" style="margin: 16px 0;">
+          <p><strong>Feature Matching:</strong> I compute the distance between all pairs of feature descriptors from the two images. For each feature in the first image, I identify its closest match in the second image based on descriptor similarity. To filter out ambiguous matches, for each feature, I compute the ratio of distances of the two nearest matches. The final match is only accepted if this ratio is below a threshold which I set to 0.6, ensuring that the best match is significantly better than alternatives.</p>
+        </div>
+         <figure>
+            <img src="results/pair_matching.jpg" alt="matching image" style="aspect-ratio: auto;">
+            <figcaption></figcaption>
+          </figure>
+          </div>
+      </section>
+
+      <section id="partb4">
+      <h2>B.4: RANSAC for Robust Homography</h2>
+       <div class="card">
+      <div class="callout" style="margin: 16px 0;">
+          <p><strong>RANSAC:</strong> RANSAC is used to estimate homography matrices. The algorithm randomly samples 4 points, which is the minimum needed to compute a homography matrix. It then computes a temporary homography matrix and counts how many other point correspondences are consistent with this. To compare the number of point corresopndances that are consistent with this matrix between iterations, I counted the number of corresponding points that are distanced below a certain threshold (3.0 in my case). After sampling 1000 times, it selects the homography with the most consistency.</p>
+         </div>
+         <div class="grid two" style="margin: 16px 0;">
+          <figure>
+              <img src="results/mosaic_2.jpg" alt="mosaic manual image" style="aspect-ratio: auto;">
+              <figcaption>Manual 2 image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/mosaic_2_auto.jpg" alt="mosaic automatic image" style="aspect-ratio: auto;">
+              <figcaption>Automatic 2 image</figcaption>
+            </figure>
+          </div>
+          <div class="grid two" style="margin: 16px 0;">
+          <figure>
+              <img src="results/alt_mosaic_3.jpg" alt="mosaic manual image" style="aspect-ratio: auto;">
+              <figcaption>Manual 3 image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/mosaic_3_auto.jpg" alt="mosaic automatic image" style="aspect-ratio: auto;">
+              <figcaption>Automatic 3 image</figcaption>
+            </figure>
+          </div>
+          <div class="grid two" style="margin: 16px 0;">
+          <figure>
+              <img src="results/mosaic_5.jpg" alt="mosaic manual image" style="aspect-ratio: auto;">
+              <figcaption>Manual 5 image</figcaption>
+            </figure>
+            <figure>
+              <img src="results/mosaic_5_auto.jpg" alt="mosaic automatic image" style="aspect-ratio: auto;">
+              <figcaption>Automatic 5 image</figcaption>
+            </figure>
+          </div>
+          </div>
+      </section>
+
+
+    <div class="backtotop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</div>
+  </body>
+</html>

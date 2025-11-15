@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CS180 Project 4: Neural Radiance Field</title>
+    <meta name="description" content="Project 3: Image Warping and Mosaicing" />
+    <meta property="og:title" content="CS180 Project 3: Image Warping and Mosaicing" />
+    <meta property="og:description" content="Image Warping and Mosaicing with Homographies" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0d1b2a" />
+
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #121a2b;
+        --muted: #9fb3c8;
+        --text: #e6edf3;
+        --link: #7cc4ff;
+        --accent: #9ef0ff;
+        --ring: rgba(126, 200, 255, 0.35);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
+        background: radial-gradient(1200px 600px at 20% -10%, #12213f 0%, #0b1220 50%, #0b1220 100%);
+      }
+      a { color: var(--link); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      header {
+        position: sticky; top: 0; z-index: 40;
+        backdrop-filter: blur(10px);
+        background: linear-gradient(180deg, rgba(11,18,32,0.9), rgba(11,18,32,0.6) 60%, transparent);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+      .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; }
+      .brand { font-weight: 700; letter-spacing: 0.4px; }
+      .brand small { color: var(--muted); font-weight: 500; }
+      .nav a { padding: 8px 10px; border-radius: 10px; }
+      .nav a:hover { background: rgba(255,255,255,0.06); text-decoration: none; }
+
+      .hero {
+        padding: 48px 0 16px;
+      }
+      .hero h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.15; margin: 0 0 6px; }
+      .hero p { margin: 6px 0 0; color: var(--muted); }
+
+      .card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+      }
+      section { padding: 18px 0 8px; }
+      section h2 { font-size: clamp(22px, 3vw, 30px); margin: 6px 0 8px; }
+      section h3 { font-size: 18px; margin: 12px 0 6px; color: var(--accent); }
+
+      .grid { display: grid; gap: 16px; }
+      .grid.two { grid-template-columns: repeat(1, 1fr); }
+      .grid.four { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr);}
+      .grid.four-row { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); }
+      .grid.three { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+      .grid.five { display: grid; gap: 16px; grid-template-columns: repeat(5, 1fr); }
+      @media (min-width: 760px) { .grid.two { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 760px) { 
+        .grid.four-row { grid-template-columns: repeat(2, 1fr); } /* Stack to 2x2 on mobile */
+        .grid.three { grid-template-columns: repeat(1, 1fr); } /* Stack to single column on mobile */
+        .grid.five { grid-template-columns: repeat(2, 1fr); } /* Stack to 2 columns on mobile */
+      }
+
+      figure { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.07); background: #0f1626; }
+      figure img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; }
+      figcaption { font-size: 14px; color: var(--muted); padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+      .caption { color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); padding: 8px 12px; background: rgba(158, 240, 255, 0.06); border-radius: 10px; }
+      .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(124, 196, 255, 0.15); border: 1px solid rgba(124,196,255,0.3); color: var(--link); font-size: 12px; }
+
+      footer { color: var(--muted); padding: 40px 0; text-align: center; }
+
+      @media print {
+        body { background: #fff; color: #000; }
+        header { display: none; }
+        .card { box-shadow: none; border-color: #ddd; }
+        a { color: #000; text-decoration: underline; }
+        figure img { aspect-ratio: auto; }
+      }
+
+      .backtotop { position: fixed; right: 18px; bottom: 18px; border-radius: 999px; background: #141d31; color: var(--text); padding: 10px 12px; border: 1px solid rgba(255,255,255,0.08); cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
+      .backtotop:hover { background: #0f1626; }
+
+      .matrix { font-family: 'Monaco', 'Consolas', monospace; font-size: 14px; background: #0f1626; border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.08); margin: 12px 0; }
+      pre { margin: 0; color: var(--text); overflow-x: auto; }
+    </style>
+  </head>
+
+  <body>
+    <main class="container">
+      <section class="hero">
+        <div class="card">
+          <h1>CS180/280A Project 4: Neural Radiance Field</h1>
+          <p class="caption">Saaketh Kanduri, Fall 2025</p>
+          <p class="callout" style="margin-top:10px;">This project implements Neural Radiance Fields for 3D scene reconstruction from 2D images</p>
+        </div>
+      </section>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <div class="card">
+          <p>This project explores Neural Radiance Fields (NeRF), a technique for synthesizing a view of a 3D scene from a collection of 2D images. I started from understanding my camera intrinsics to estimating camera poses. Then I built a small neural fields to 2D image model, and finally implemented a full NeRF pipeline to render a 3D view from a dataset of 2D images.</p>
+        </div>
+      </section>
+
+      <section id="part0">
+        <h2>Part 0: Calibrating Your Camera and Capturing a 3D Scan</h2>
+        <div class="card">
+          <h3>Part 0.1: Calibrating Your Camera</h3>
+          <p>I captured 44 calibration images of ArUco tags from various angles and distances, then used OpenCV's ArUco detector and camera calibration functions to compute the camera intrinsics and distortion coefficients. I saved this to use as the camera matrix in later parts</p>
+
+          <h3>Part 0.2: Capturing a 3D Object Scan</h3>
+          <p>I selected an object and captured 39 images with a single ArUco tag placed next to it, maintaining consistent camera settings and zoom level as during calibration. The images were captures at different angles and depths.</p>
+
+          <h3>Part 0.3: Estimating Camera Pose</h3>
+          <p>Using the calibrated intrinsics and cv2.solvePnP(), I estimated camera poses for each image by detecting the ArUco tag and computing the camera to world transformation matrices.</p>
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/part2-6/camera_2.png" alt="Camera frustums visualization 1" style="aspect-ratio: auto; object-fit: contain;">
+              <figcaption>Viser visualization of camera frustums (view 1)</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part2-6/camera_1.png" alt="Camera frustums visualization 2" style="aspect-ratio: auto; object-fit: contain;">
+              <figcaption>Viser visualization of camera frustums (view 2)</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+          <h3>Part 0.4: Undistorting Images and Creating a Dataset</h3>
+          <p>I undistorted all images using cv2.undistort() and packaged them into a .npz dataset file with training, validation, and test splits, ready for NeRF training.</p>
+
+      <section id="part1">
+        <h2>Part 1: Fit a Neural Field to a 2D Image</h2>
+        <div class="card">
+          <h3>Network Architecture</h3>
+          <p>I implemented an MLP with sinusoidal positional encoding to represent a 2D image as a neural field. The network takes two values which are pixel coordinates and outputs three values which are the rgb values.</p>
+          
+          <div class="callout" style="margin: 16px 0;">
+            <p><strong>Architecture:</strong> MLP with hidden layers, ReLU activations, and Sigmoid output</p>
+            <p><strong>Positional Encoding:</strong> PE(x) = {x, sin(2^0 * pi * x), cos(2^0 * pi * x), ... , sin(2^L * pi * x), cos(2^L * pi * x)}. Positional encoding allows us to represent 2D coordinates in higher dimensions using sine/cosine functions at different frequencies to help the network learn high frequency details. </p>
+            <p><strong>Training:</strong> Adam optimizer with lr=1e-3, hidden_dim = 512, L = 20, MSE loss, batch size 10k pixels, 2000 iterations</p>
+          </div>
+
+          <h3>Training Progression</h3>
+          <p>Training progression on the provided test image:</p>
+          <div class="grid five" style="margin: 16px 0;">
+            <figure>
+              <img src="results/part1/part1_snapshot_1.png" alt="Iteration 0">
+              <figcaption>Iteration 0</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/part1_snapshot_2.png" alt="Iteration 300">
+              <figcaption>Iteration 100</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/part1_snapshot_3.png" alt="Iteration 600">
+              <figcaption>Iteration 400</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/part1_snapshot_4.png" alt="Iteration 1500">
+              <figcaption>Iteration 1000</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/part1_snapshot_5.png" alt="Iteration 3000">
+              <figcaption>Iteration 2000 (Final)</figcaption>
+            </figure>
+          </div>
+
+          <p>Training progression on my own image:</p>
+          <div class="grid five" style="margin: 16px 0;">
+            <figure>
+              <img src="results/part1/part1_2snapshot_1.png" alt="Iteration 0">
+              <figcaption>Iteration 0</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/part1_2snapshot_2.png" alt="Iteration 300">
+              <figcaption>Iteration 100</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/part1_2snapshot_3.png" alt="Iteration 600">
+              <figcaption>Iteration 400</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/part1_2snapshot_4.png" alt="Iteration 1500">
+              <figcaption>Iteration 1000</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/part1_2snapshot_5.png" alt="Iteration 3000">
+              <figcaption>Iteration 2000 (Final)</figcaption>
+            </figure>
+          </div>
+
+          <h3>PSNR Curves</h3>
+          <div class="grid two" style="margin: 16px 0;">
+          <figure style="margin: 16px 0;">
+            <img src="results/part1/part1_psnr1.png" alt="PSNR training curve">
+            <figcaption>PSNR for Fox Image</figcaption>
+          </figure>
+          <figure style="margin: 16px 0;">
+            <img src="results/part1/part1_psnr2.png" alt="PSNR training curve">
+            <figcaption>PSNR for Cat Image</figcaption>
+        </div>
+          </figure>
+
+
+          <h3>Hyperparameter Experiments</h3>
+          <p>Results with different max frequencies (L) and network widths:</p>
+          <div class="grid four" style="margin: 16px 0;">
+            <figure>
+              <img src="results/part1/L2_width128.png" alt="L=2, width=128">
+              <figcaption>L = 2, width = 128</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/L2_width512.png" alt="L=2, width=256">
+              <figcaption>L = 2, width = 512</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/L20_width128.png" alt="L=10, width=128">
+              <figcaption>L = 20, width = 128</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part1/L20_width512.png" alt="L=10, width=256">
+              <figcaption>L = 20, width = 512</figcaption>
+            </figure>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Part 2 -->
+      <section id="part2">
+        <h2>Part 2: Fit a Neural Radiance Field from Multi-view Images</h2>
+        <div class="card">
+          <h3>Part 2.1: Create Rays from Cameras</h3>
+          <p><strong>Implementation:</strong> I implemented three key transformation functions:</p>
+          <ul>
+            <li><strong>transform(camera to world matrix, points from camera space):</strong> Transforms points from camera space to world space by applying the camera-to-world transformation matrix. The camera-to-world transformation matrices comes our result in part 0.3</li>
+            <li><strong>pixel_to_camera(camera intrinsics matrix, pixel coordinates, depth):</strong> Converts pixel coordinates to camera space by inverting the intrinsic matrix projection. The intrinsic matrix is from our camera calibration in part 0.1. Given the pixel coordinates and depth, computes the 3D point in camera coordinates.</li>
+            <li><strong>pixel_to_ray(camera intrinsics matrix, camera to world matrix, pixel coordinates):</strong> Generates rays by computing the ray origin (translation component of camera to world matrix) and ray direction. To find ray direction, it finds where the pixel coordinates are in the world space at depth = 1 and subtracts it from the ray origin and then normalizes.</li>
+          </ul>
+
+          <h3>Part 2.2: Sampling</h3>
+          <p><strong>Implementation:</strong> I implemented two sampling strategies:</p>
+          <ul>
+            <li><strong>Sampling Rays from Images:</strong> Created a dataloader that randomly samples N rays per iteration. I chose to flatten all pixels from all training images and perform sampling from that list to get diverse rays across the entire dataset. When we sample, we are returned ray origins and directions.</li>
+            <li><strong>Sampling Points along Rays:</strong> For each ray, I uniformly sample 64 points. During training, I add random perturbation to avoid overfitting to fixed sample locations. The 3D coordinates are computed as: x = ray_origin + ray_direction * t, where t is a sample point.</li>
+          </ul>
+
+          <h3>Part 2.3: Putting the Dataloading All Together</h3>
+          <p><strong>Implementation:</strong> Combined all components into a complete dataloader that returns ray origins, ray directions, and corresponding ground truth pixel colors.</p>
+          
+           <div class="grid two" style="margin: 16px 0;">
+          <figure style="margin: 16px 0;">
+            <img src="results/part2/rays_visualization1.png" alt="Rays and samples visualization">
+            <figcaption>Visualization showing camera frustums, sampled rays, and 3D sample points along rays</figcaption>
+          </figure>
+          <figure style="margin: 16px 0;">
+            <img src="results/part2/rays_visualization2.png" alt="Rays and samples visualization">
+            <figcaption>Visualization showing rays coming out of one camera angle</figcaption>
+          </figure>
+          </div>
+
+          <h3>Part 2.4: Neural Radiance Field</h3>
+          <p><strong>Implementation:</strong> I implemented a neural network that takes 3D coordinates and view directions as input and outputs volume density and RGB color.</p>
+          <ul>
+            <li><strong>Inputs:</strong> 3D position (x, y, z) encoded with L = 10 frequency, and view direction encoded with L = 4 frequency</li>
+            <li><strong>Architecture:</strong> 8 fully connected layers with 256 hidden weights and ReLU activation. A skip connection after layer 4 is added. After 8 layers, it first outputs a single value for density passed through ReLU (for non-negativity) then concatenates with the encoded view direction. This passes through one more layer, then outputs 3 RGB values through Sigmoid (to ensure [0,1] range).</li>
+          </ul>
+
+          <h3>Part 2.5: Volume Rendering</h3>
+          <p><strong>Implementation:</strong> I implemented volume rendering to convert the NeRF network outputs into final pixel colors. For each ray, the process involves three key steps:</p>
+          
+          <ul>
+            <li><strong>Computing Alpha Values:</strong> Convert density to opacity using alpha = 1 - exp(-density x step size), where step size is the distance between samples</li>
+            <li><strong>Computing Transmittance:</strong> Calculate how much light reaches each point by accumulating the product of (1 − alpha) for all previous samples along the ray</li>
+            <li><strong>Color Accumulation:</strong> Blend colors from all samples using their weighted contribution (transmittance x alphas), producing the final rendered pixel color</li>
+          </ul>
+          
+          <p><strong>Training Setup:</strong> Adam optimizer with learning rate 5e-4, batch size 10K rays, MSE loss between rendered and ground truth colors. Sampled 64 points per ray from near = 2.0 to far = 6.0. Trained for 1000 iterations on the Lego dataset.</p>
+
+          <p>Training progression:</p>
+          <div class="grid five" style="margin: 16px 0;">
+            <figure>
+              <img src="results/part2/lego_iter0.png" alt="Iteration 0">
+            </figure>
+            <figure>
+              <img src="results/part2/lego_iter400.png" alt="Iteration 300">
+            </figure>
+            <figure>
+              <img src="results/part2/lego_iter800.png" alt="Iteration 600">
+            </figure>
+            <figure>
+              <img src="results/part2/lego_iter1200.png" alt="Iteration 1500">
+            </figure>
+            <figure>
+              <img src="results/part2/lego_iter1999.png" alt="Iteration 3000">
+            </figure>
+          </div>
+
+
+          <h3>Synthesized GIF</h3>
+          <figure style="margin: 16px 0;">
+            <img src="results/part2/lego_spherical.gif" alt="Lego novel views">
+          </figure>
+
+          <h3>PSNR on Validation Set</h3>
+          <figure style="margin: 16px 0;">
+            <img src="results/part2/psnr_validation.png" alt="PSNR curve on validation">
+            <figcaption>PSNR on validation set over iterations (achieved over 23 PSNR)</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- Part 2.6 -->
+      <section id="part2-6">
+        <h2>Part 2.6: Training with Your Own Data</h2>
+        <div class="card">
+          <h3>Hyperparameter Adjustments</h3>
+          <p>For my own captured object, I used the following yperparameters:</p>
+          <ul>
+            <li><strong>Near/Far bounds:</strong> (0.02, 0.5)</li>
+            <li><strong>Iterations:</strong>10000</li>
+            <li><strong>Kept learning rate, batch size, and number of samples along rays the same</strong>
+          </ul>
+
+          <h3>Intermediate renders from one camera angle</h3>
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/part2-6/iter2000.png" alt="500 iterations">
+              <figcaption>2k iterations</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part2-6/iter6000.png" alt="2000 iterations">
+              <figcaption>6k iterations</figcaption>
+            </figure>
+            <figure>
+              <img src="results/part2-6/iter9999.png" alt="6000 iterations">
+              <figcaption>10k iterations</figcaption>
+            </figure>
+          </div>
+
+          <h3>Training Loss, PSNR</h3>
+          <div class="grid two" style="margin: 16px 0;">
+          <figure style="margin: 16px 0;">
+            <img src="results/part2-6/psnr.png" alt="Training loss curve">
+            <figcaption>Training psnr over iterations</figcaption>
+          </figure>
+          <figure style="margin: 16px 0;">
+            <img src="results/part2-6/loss.png" alt="Training loss curve">
+            <figcaption>Training loss over iterations</figcaption>
+          </figure>
+          </div>
+
+          <h3>Synthesized GIF</h3>
+          <figure style="margin: 16px 0;">
+            <img src="results/part2-6/final_sphere.gif" alt="Novel views of my object">
+          </figure>
+        </div>
+      </section>
+
+      
+    </main>
+    <div class="backtotop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</div>
+  </body>

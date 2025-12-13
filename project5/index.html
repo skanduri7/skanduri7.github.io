@@ -3,12 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CS180 Project 4: Neural Radiance Field</title>
-    <meta name="description" content="Project 4" />
-    <meta property="og:title" content="CS180 Project 4" />
-    <meta property="og:description" content="" />
+    <title>CS180 Project 5: Fun with Diffusion Models!</title>
+    <meta name="description" content="Project 5: Fun with Diffusion Models!" />
+    <meta property="og:title" content="CS180 Project 5: Fun with Diffusion Models!" />
+    <meta property="og:description" content="Diffusion Models and Flow Matching" />
     <meta property="og:type" content="website" />
     <meta name="theme-color" content="#0d1b2a" />
+    
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
 
     <style>
       :root {
@@ -66,15 +71,18 @@
       .grid.four-row { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); }
       .grid.three { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
       .grid.five { display: grid; gap: 16px; grid-template-columns: repeat(5, 1fr); }
+      .grid.seven { display: grid; gap: 16px; grid-template-columns: repeat(7, 1fr); }
+      .grid.six { display: grid; gap: 16px; grid-template-columns: repeat(6, 1fr); }
       @media (min-width: 760px) { .grid.two { grid-template-columns: repeat(2, 1fr); } }
       @media (max-width: 760px) { 
-        .grid.four-row { grid-template-columns: repeat(2, 1fr); } /* Stack to 2x2 on mobile */
-        .grid.three { grid-template-columns: repeat(1, 1fr); } /* Stack to single column on mobile */
-        .grid.five { grid-template-columns: repeat(2, 1fr); } /* Stack to 2 columns on mobile */
+        .grid.four-row { grid-template-columns: repeat(2, 1fr); }
+        .grid.three { grid-template-columns: repeat(1, 1fr); }
+        .grid.five { grid-template-columns: repeat(2, 1fr); }
+        .grid.seven { grid-template-columns: repeat(2, 1fr); }
       }
 
       figure { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.07); background: #0f1626; }
-      figure img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; }
+      figure img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: contain; }
       figcaption { font-size: 14px; color: var(--muted); padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
 
       .caption { color: var(--muted); }
@@ -96,6 +104,860 @@
 
       .matrix { font-family: 'Monaco', 'Consolas', monospace; font-size: 14px; background: #0f1626; border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.08); margin: 12px 0; }
       pre { margin: 0; color: var(--text); overflow-x: auto; }
+      
+      .equation-card {
+        background: linear-gradient(135deg, rgba(124, 196, 255, 0.08), rgba(158, 240, 255, 0.06));
+        border: 1px solid rgba(124, 196, 255, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 16px 0;
+        text-align: center;
+      }
+      .equation-card .katex { font-size: 1.2em; }
+      .equation-card p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
     </style>
   </head>
 
+  <body>
+    <main class="container">
+      <section class="hero">
+        <div class="card">
+          <h1>CS180/280A Project 5: Fun with Diffusion Models!</h1>
+          <p class="caption">Saaketh Kanduri, Fall 2025</p>
+          <p class="callout" style="margin-top:10px;">This project explores diffusion models and flow matching for image generation and manipulation</p>
+        </div>
+      </section>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <div class="card">
+          <p>This project is divided into two parts. Part A explores pretrained diffusion models, implementing sampling and using them for tasks such as image to image transformation, inpainting, visual anagrams, and hybrid images. Part B trains a flow matching model from scratch on MNIST digits, starting with a one step denoiser and building up to a fully conditional flow matching model.</p>
+        </div>
+      </section>
+
+      <!-- PART A: THE POWER OF DIFFUSION MODELS -->
+      <section id="parta">
+        <h2>Part A: The Power of Diffusion Models!</h2>
+      </section>
+
+      <!-- Part 0 -->
+      <section id="part0">
+        <h2>Part 0: Setup and Text Prompts</h2>
+        <div class="card">
+          <p>I used some of my own text prompts and generated images using the DeepFloyd model with different number of steps of the inference. Here are the 3 selected prompts with their outputs:</p>
+          
+          <div class="callout" style="margin: 16px 0;">
+            <p><strong>Random Seed Used:</strong> 1</p>
+            <p><strong>Inference Steps Tested:</strong> 5 and 200</p>
+          </div>
+
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/1_5.png" alt="Prompt 1 with 20 steps">
+              <figcaption>a retired couple on a chicken farm near a beach (5 steps)</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/2_5.png" alt="Prompt 1 with 50 steps">
+              <figcaption>a college football player scoring a touchdown (5 steps)</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/3_5.png" alt="Prompt 2 with 20 steps">
+              <figcaption>a small Indian restaurant in the middle of a city (5 steps)</figcaption>
+            </figure>
+          </div>
+
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/1_200.png" alt="Prompt 1 with 20 steps">
+              <figcaption>a retired couple on a chicken farm near a beach (200 steps)</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/2_200.png" alt="Prompt 1 with 50 steps">
+              <figcaption>a college football player scoring a touchdown (200 steps)</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/3_200.png" alt="Prompt 2 with 20 steps">
+              <figcaption>a small Indian restaurant in the middle of a city (200 steps)</figcaption>
+            </figure>
+          </div>
+
+          <p class="callout">With 40 times more inference steps (200 vs 5), the images show much more refined details and better coherence with the text prompts. The diffusion model takes more iterations to denoise, resulting in higher quality outputs.</p>
+        </div>
+      </section>
+
+      <!-- Part 1 -->
+      <section id="part1">
+        <h2>Part 1: Sampling Loops</h2>
+        <div class="card">
+          <h3>1.1 Implementing the Forward Process</h3>
+          <p>I implemented the forward process that adds noise (epsilon) to clean images according to the diffusion schedule.</p>
+          
+            <div>
+              $$x_t = \sqrt{\bar{\alpha}_t} \cdot x_0 + \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon$$
+            </div>
+          
+          <div class="grid four-row" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/clean.png" alt="Clean Campanile">
+              <figcaption>Original Campanile</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/250.png" alt="Noisy at t=250">
+              <figcaption>t = 250</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/500.png" alt="Noisy at t=500">
+              <figcaption>t = 500</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/750.png" alt="Noisy at t=750">
+              <figcaption>t = 750</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.2 Classical Denoising</h3>
+          <p>I denoised the noisy images using Gaussian blur filtering.</p>
+          
+          <div class="grid four-row" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/clean.png" alt="Clean Campanile">
+              <figcaption>Original Campanile</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/blur_250.png" alt="Gaussian blur at t=250">
+              <figcaption>Gaussian Blur at t=250</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/blur_500.png" alt="Gaussian blur at t=500">
+              <figcaption>Gaussian Blur at t=500</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/blur_750.png" alt="Gaussian blur at t=750">
+              <figcaption>Gaussian Blur at t=750</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.3 One-Step Denoising</h3>
+          <p>Using a pretrained UNet denoiser, I performed one step denoising by estimating and removing the noise from noisy images. The results are significantly better than the previous classical denoising.</p>
+          
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/250.png" alt="One-step at t=250">
+              <figcaption>One-Step Denoised t = 250</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/500.png" alt="One-step at t=500">
+              <figcaption>One-Step Denoised t = 500</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/750.png" alt="One-step at t=750">
+              <figcaption>One-Step Denoised t = 750</figcaption>
+            </figure>
+          </div>
+
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/onestep_250.png" alt="One-step at t=250">
+              <figcaption>One-Step Denoised t = 250</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/onestep_500.png" alt="One-step at t=500">
+              <figcaption>One-Step Denoised t = 500</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/onestep_750.png" alt="One-step at t=750">
+              <figcaption>One-Step Denoised t = 750</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.4 Iterative Denoising</h3>
+          <p>I implemented iterative denoising with strided timesteps (starting at 990 with a stride of 30). The model gradually removes noise over multiple steps and produces a much better result than one step denoising.</p>
+          
+          <p><strong>Denoising progression:</strong></p>
+          <div class="grid five" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/90.png" alt="Iteration step 0">
+              <figcaption>t = 90</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/240.png" alt="Iteration step 5">
+              <figcaption>t = 240</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/390.png" alt="Iteration step 10">
+              <figcaption>t = 390</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/540.png" alt="Iteration step 15">
+              <figcaption>t = 540</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/690.png" alt="Iteration step 20">
+              <figcaption>t = 690</figcaption>
+            </figure>
+          </div>
+
+          <p><strong>Comparison of denoising methods:</strong></p>
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/iter.png" alt="Iterative denoising">
+              <figcaption>Iterative Denoising Result</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/onestep.png" alt="One-step denoising">
+              <figcaption>One-Step Denoising Result</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/blur.png" alt="Gaussian blur">
+              <figcaption>Gaussian Blur Result</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.5 Diffusion Model Sampling</h3>
+          <p>I generated images from scratch by denoising pure random noise using the iterative denoising function.</p>
+          
+          <div class="grid five" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/1.png" alt="Sample 1">
+            </figure>
+            <figure>
+              <img src="results/5a/2.png" alt="Sample 2">
+            </figure>
+            <figure>
+              <img src="results/5a/3.png" alt="Sample 3">
+            </figure>
+            <figure>
+              <img src="results/5a/4.png" alt="Sample 4">
+            </figure>
+            <figure>
+              <img src="results/5a/5.png" alt="Sample 5">
+            </figure>
+          </div>
+
+          <h3>1.6 Classifier Free Guidance</h3>
+          <p>I implemented a Classifier Free Guidance loop to significantly improve image quality. This uses both conditional and unconditional noise estimates with a guidance scale of γ = 7.</p>
+          
+          <div class="grid five" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/c1.png" alt="CFG Sample 1">
+            </figure>
+            <figure>
+              <img src="results/5a/c2.png" alt="CFG Sample 2">
+            </figure>
+            <figure>
+              <img src="results/5a/c3.png" alt="CFG Sample 3">
+            </figure>
+            <figure>
+              <img src="results/5a/c4.png" alt="CFG Sample 4">
+            </figure>
+            <figure>
+              <img src="results/5a/c5.png" alt="CFG Sample 5">
+            </figure>
+          </div>
+
+          <h3>1.7 Image to image Translation</h3>
+          <p>I implemented a loop to project a starting image onto the target image manifold by first adding noise and then denoising towards the target. Different noise levels show a gradual scale where the images get closer to the target.</p>
+          
+          <p><strong>Campanile with "a high quality photo" prompt:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/7_1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/clean.png" alt="i_start=1">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+          <p><strong>Lexus:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/7_2_1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_2_3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_2_5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_2_7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_2_10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_2_20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/lexus.png" alt="i_start=1">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+          <p><strong>Root Beer:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/7_3_1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_3_3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_3_5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_3_7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_3_10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/7_3_20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/root_beer.png" alt="i_start=1">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.7.1 Editing Non-Realistic Hand Drawn and Web Images</h3>
+          <p>I experimented with hand drawn images and web images, projecting them onto the target image manifold as well.</p>
+          
+          <p><strong>Web Image:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/web1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/web3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/web5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/web7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/web10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/web20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/web.png" alt="i_start=1">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+          <p><strong>Hand Drawn Truck Driving:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/hand1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/hand3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/hand5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/hand7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/hand10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/hand20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/orig_hand.png" alt="i_start=1">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+         <p><strong>Hand Drawn Fisherman:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/h1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/h3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/h5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/h7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/h10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/h20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/h.png" alt="i_start=1">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.7.2 Inpainting</h3>
+          <p>I implemented inpainting using the RePaint algorithm, which allows filling in masked regions of an image.</p>
+          
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/clean.png" alt="Original">
+              <figcaption>Original Campanile</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/inpainted.png" alt="Inpainted">
+              <figcaption>Inpainted Result</figcaption>
+            </figure>
+          </div>
+
+          <p><strong>An Old Couple within a Frame:</strong></p>
+          <div class="grid four-row" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/frame.png" alt="Original">
+              <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/mask1.png" alt="Mask">
+              <figcaption>Mask</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/masked1.png" alt="Masked">
+              <figcaption>Masked</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/inpainted2.png" alt="Inpainted">
+              <figcaption>Inpainted</figcaption>
+            </figure>
+          </div>
+
+          <p><strong>The Grand Indian Restaurant (Taj Mahal):</strong></p>
+          <div class="grid four-row" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/taj.png" alt="Original">
+              <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/mask2.png" alt="Mask">
+              <figcaption>Mask</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/masked2.png" alt="Masked">
+              <figcaption>Masked</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/inpainted3.png" alt="Inpainted">
+              <figcaption>Inpainted</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.7.3 Text-Conditional Image-to-image Translation</h3>
+          <p>I performed image to image translation with text conditioning, allowing control over the style and content of the edits.</p>
+          
+          <p><strong>Campanile iterating from prompt as a football player:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/cu1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/cu3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/cu5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/cu7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/cu10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/cu20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/clean.png" alt="Original">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+          <p><strong>Indian Restaurant to Taj Mahal:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/int1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/int3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/int5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/int7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/int10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/int20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/taj.png" alt="Original">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+          <p><strong>Retired Couple to Art Piece:</strong></p>
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/ra1.png" alt="i_start=1">
+              <figcaption>i = 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/ra3.png" alt="i_start=3">
+              <figcaption>i = 3</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/ra5.png" alt="i_start=5">
+              <figcaption>i = 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/ra7.png" alt="i_start=7">
+              <figcaption>i = 7</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/ra10.png" alt="i_start=10">
+              <figcaption>i = 10</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/ra20.png" alt="i_start=20">
+              <figcaption>i = 20</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/frame.png" alt="Original">
+              <figcaption>Original</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.8 Visual Anagrams</h3>
+          <p>I also created visual anagrams. These are images that look like one thing normally but flipping them shows something different. This is done by averaging noise estimates from two different prompts, one for the normal orientation and one for the flipped orientation.</p>
+          
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/an1.png" alt="Anagram 1 normal">
+              <figcaption>An Old Man (Normal View)</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/an1_flipped.png" alt="Anagram 1 flipped">
+              <figcaption>People Around a Campfire (Flipped View)</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/an2.png" alt="Anagram 2 normal">
+              <figcaption>Chicken Farmers (Normal View)</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/an2_flipped.png" alt="Anagram 2 flipped">
+              <figcaption>Football Player (Flipped View)</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.9 Hybrid Images</h3>
+          <p>I created hybrid images using diffusion models by combining the low pass filtered noise from one prompt with high pass filtered noise from another prompt.</p>
+          
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5a/hy1.png" alt="Hybrid 1">
+              <figcaption>A Hip Dog Barista</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5a/hy2.png" alt="Hybrid 2">
+              <figcaption>Lithograph of a skull and a waterfall</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- PART B: FLOW MATCHING FROM SCRATCH -->
+      <section id="partb">
+        <h2>Part B: Flow Matching from Scratch</h2>
+      </section>
+
+      <!-- Part 1 -->
+      <section id="partb1">
+        <h2>Part 1: Training a Single-Step Denoising UNet</h2>
+        <div class="card">
+          <h3>1.1 Implementing the UNet</h3>
+          <p>I implemented a UNet architecture with downsampling and upsampling blocks for image denoising. The architecture consists of convolutional layers, batch normalization, and skip connections.</p>
+
+          <h3>1.2 Using the UNet to Train a Denoiser</h3>
+          <p>I visualized the noising process by adding Gaussian noise at different levels (σ = [0.0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0]).</p>
+          
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5b/n0.png" alt="σ=0.0">
+              <figcaption>σ = 0.0</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/n2.png" alt="σ=0.2">
+              <figcaption>σ = 0.2</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/n4.png" alt="σ=0.4">
+              <figcaption>σ = 0.4</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/n5.png" alt="σ=0.5">
+              <figcaption>σ = 0.5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/n6.png" alt="σ=0.6">
+              <figcaption>σ = 0.6</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/n8.png" alt="σ=0.8">
+              <figcaption>σ = 0.8</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/n1.0.png" alt="σ=1.0">
+              <figcaption>σ = 1.0</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.2.1 Training</h3>
+          <p>I trained the UNet to denoise images with σ=0.5 for 5 epochs using Adam optimizer with learning rate 1e-4.</p>
+          
+          <div class="grid three" style="margin: 16px 0;">
+           
+         <figure>
+              <img src="results/5b/e1.png" alt="Epoch 1 results">
+              <figcaption>Results after Epoch 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/e5.png" alt="Epoch 5 results">
+              <figcaption>Results after Epoch 5</figcaption>
+            </figure>
+
+          <figure>
+              <img src="results/5b/loss.png" alt="Training loss">
+              <figcaption>Training Loss Curve</figcaption>
+            </figure>
+            </div>
+
+          <h3>1.2.2 Out-of-Distribution Testing</h3>
+          <p>I tested the denoiser on different noise levels than it was trained on to see how well it generalizes.</p>
+          
+          <div class="grid seven" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5b/s0.png" alt="σ=0.0">
+              <figcaption>σ = 0.0</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/s2.png" alt="σ=0.2">
+              <figcaption>σ = 0.2</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/s4.png" alt="σ=0.4">
+              <figcaption>σ = 0.4</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/s5.png" alt="σ=0.5">
+              <figcaption>σ = 0.5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/s6.png" alt="σ=0.6">
+              <figcaption>σ = 0.6</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/s8.png" alt="σ=0.8">
+              <figcaption>σ = 0.8</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/s10.png" alt="σ=1.0">
+              <figcaption>σ = 1.0</figcaption>
+            </figure>
+          </div>
+
+          <h3>1.2.3 Denoising Pure Noise</h3>
+          <p>I trained a denoiser on pure Gaussian noise to understand what the model learns. The model learns to output the "average" digit from the training set, as this minimizes the MSE loss over all possible clean images.</p>
+          
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5b/ep1.png" alt="Pure noise loss">
+              <figcaption>Results after Epoch 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/ep5.png" alt="Epoch 1 pure noise">
+              <figcaption>Results after Epoch 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/loss1.png" alt="Epoch 5 pure noise">
+              <figcaption>Training Loss Curve</figcaption>
+            </figure>
+          </div>
+
+          <div class="callout" style="margin: 16px 0;">
+            <p><strong>Observation:</strong> When denoising pure noise, the model outputs a blurry "average" of all training digits. This is because with MSE loss, the optimal prediction is the mean of all possible targets. The model can't distinguish which digit to generate from pure noise, so it outputs something in between all of them.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Part 2 -->
+      <section id="partb2">
+        <h2>Part 2: Training a Flow Matching Model</h2>
+        <div class="card">
+          <h3>2.1 Adding Time Conditioning to UNet</h3>
+          <p>I added time conditioning to the UNet using FCBlocks that modulate the features based on the timestep t. This allows the network to learn different denoising strategies for different noise levels.</p>
+
+          <h3>2.2 Training the UNet</h3>
+          <p>I trained the time conditioned UNet to predict the flow from noisy images x_t to clean images x_1.</p>
+          
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5b/loss3.png" alt="Time-conditioned loss">
+              <figcaption>Training Loss Curve</figcaption>
+            </figure>
+          </div>
+
+          <h3>2.3 Sampling from the UNet</h3>
+          <p>I sampled from the time-conditioned UNet using iterative denoising. The results improve over training epochs.</p>
+          
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5b/epo1.png" alt="Epoch 1 samples">
+              <figcaption>Samples after Epoch 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/epo5.png" alt="Epoch 5 samples">
+              <figcaption>Samples after Epoch 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/epo10.png" alt="Epoch 10 samples">
+              <figcaption>Samples after Epoch 10</figcaption>
+            </figure>
+          </div>
+
+          <h3>2.4 Adding Class-Conditioning to UNet</h3>
+          <p>I added class conditioning using one-hot vectors for digits 0-9, with 10% dropout for unconditional generation (to enable classifier-free guidance).</p>
+
+          <h3>2.5 Training the UNet</h3>
+          <p>I trained the class-conditioned UNet with both time and class conditioning.</p>
+          
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5b/loss4.png" alt="Class-conditioned loss">
+              <figcaption>Training Loss Curve</figcaption>
+            </figure>
+          </div>
+
+          <h3>2.6 Sampling from the UNet</h3>
+          <p>I sampled from the class-conditioned UNet using classifier-free guidance with γ=5.0. The results are much better than time-only conditioning.</p>
+          
+          <div class="grid three" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5b/epoch0.png" alt="Epoch 1 class samples">
+              <figcaption>Samples after Epoch 1</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/epoch5.png" alt="Epoch 5 class samples">
+              <figcaption>Samples after Epoch 5</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/epoch10.png" alt="Epoch 10 class samples">
+              <figcaption>Samples after Epoch 10</figcaption>
+            </figure>
+          </div>
+
+          <div class="callout" style="margin: 16px 0;">
+            <p><strong>Removing Learning Rate Scheduler:</strong> I removed the scheduler. To maintain performance, I used a lower but now constant learning rate of 5e-3 and increased epochs by 5. The results show comparable quality without the complexity of a scheduler. The losses are comparable with both finishing around 0.1.</p>
+          </div>
+
+          <div class="grid two" style="margin: 16px 0;">
+            <figure>
+              <img src="results/5b/epoch10.png" alt="No scheduler loss">
+              <figcaption>Training without Scheduler</figcaption>
+            </figure>
+            <figure>
+              <img src="results/5b/nosch.png" alt="No scheduler samples">
+              <figcaption>Samples without Scheduler</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+    
+
+      <footer>
+        <p>&copy; 2025 Saaketh Kanduri. CS180 Project 5.</p>
+      </footer>
+    </main>
+
+    <a href="#" class="backtotop" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;">↑ Top</a>
+  </body>
+</html>
